@@ -1,0 +1,18 @@
+# Dependências
+node_modules/
+
+# Variáveis de ambiente (NUNCA enviar para o GitHub!)
+.env
+.env.local
+.env.production
+
+# Ficheiros de upload dos utilizadores
+public/uploads/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Sistema operativo
+.DS_Store
+Thumbs.db

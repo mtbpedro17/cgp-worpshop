@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard - Inscrições | CGP</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --verde-escuro: #0c3b2a;
+    --verde-neon: #b5ff4d;
+    --laranja: #ff5e1a;
+    --branco: #f8f9fa;
+    --preto: #0a0c0b;
+    --cinza: #1b1f1d;
+  }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: linear-gradient(135deg, var(--preto) 0%, var(--cinza) 100%);
+    color: var(--branco);
+    min-height: 100vh;
+    padding: 1rem;
+  }
+  .container { max-width: 1400px; margin: 0 auto; }
+  .header {
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;
+    padding-bottom: 1rem; border-bottom: 2px solid var(--verde-neon);
+  }
+  .header h1 { font-size: 1.8rem; display: flex; align-items: center; gap: 0.5rem; }
+  .header h1 i { color: var(--verde-neon); }
+  .header-buttons { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .btn {
+    padding: 0.6rem 1.2rem; border: none; border-radius: 100px;
+    cursor: pointer; font-weight: 600; transition: all 0.3s ease;
+    display: inline-flex; align-items: center; gap: 0.5rem;
+  }
+  .btn-primary { background: var(--verde-neon); color: var(--preto); }
+  .btn-primary:hover { background: var(--laranja); color: white; transform: translateY(-2px); }
+  .btn-danger { background: #dc3545; color: white; }
+  .btn-danger:hover { background: #c82333; transform: translateY(-2px); }
+  .btn-secondary { background: rgba(255,255,255,0.1); color: white; }
+  .btn-secondary:hover { background: rgba(255,255,255,0.2); transform: translateY(-2px); }
+  .stats-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem; margin-bottom: 2rem;
+  }
+  .stat-card {
+    background: rgba(255,255,255,0.05); backdrop-filter: blur(10px);
+    border-radius: 1rem; padding: 1.2rem;
+    border: 1px solid rgba(181,255,77,0.2); text-align: center;
+  }
+  .stat-card .icon { font-size: 2rem; color: var(--verde-neon); margin-bottom: 0.5rem; }
+  .stat-card .value { font-size: 2rem; font-weight: 800; }
+  .stat-card .label { font-size: 0.8rem; color: rgba(255,255,255,0.6); }
+  .table-container {
+    overflow-x: auto; background: rgba(255,255,255,0.05);
+    border-radius: 1rem; padding: 1rem;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 0.8rem; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  th { color: var(--verde-neon); font-weight: 600; font-size: 0.8rem; letter-spacing: 0.1em; }
+  td { font-size: 0.85rem; }
+  .status {
+    display: inline-block; padding: 0.2rem 0.6rem;
+    border-radius: 100px; font-size: 0.7rem; font-weight: 600;
+  }
+  .status-pending { background: rgba(255,94,26,0.2); color: var(--laranja); }
+  .status-confirmed { background: rgba(181,255,77,0.2); color: var(--verde-neon); }
+  .btn-sm { padding: 0.3rem 0.6rem; font-size: 0.7rem; }
+  .modal-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.95); backdrop-filter: blur(8px);
+    z-index: 2000; display: none; align-items: center;
+    justify-content: center; padding: 1rem;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: linear-gradient(135deg, var(--cinza), #1f2421);
+    border-radius: 1rem; padding: 1.5rem; max-width: 500px;
+    width: 100%; position: relative; border: 2px solid var(--verde-neon);
+    max-height: 90vh; overflow-y: auto;
+  }
+  .modal-close {
+    position: absolute; top: 1rem; right: 1rem;
+    background: none; border: none; color: rgba(255,255,255,0.5);
+    font-size: 1.3rem; cursor: pointer;
+  }
+  .modal-close:hover { color: var(--laranja); }
+  .comprovante-img { max-width: 100%; border-radius: 0.5rem; margin-top: 1rem; }
+  .loading { text-align: center; padding: 2rem; color: rgba(255,255,255,0.5); }
+  .loading i { font-size: 2rem; color: var(--verde-neon); animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (max-width: 768px) {
+    th, td { padding: 0.5rem; font-size: 0.7rem; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .header { flex-direction: column; text-align: center; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="fas fa-users"></i> Gestão de Inscrições</h1>
+    <div class="header-buttons">
+      <button class="btn btn-secondary" onclick="carregarDados()"><i class="fas fa-sync-alt"></i> Atualizar</button>
+      <button class="btn btn-primary" onclick="exportarCSV()"><i class="fas fa-download"></i> Exportar CSV</button>
+      <button class="btn btn-danger" onclick="limparTudo()"><i class="fas fa-trash-alt"></i> Limpar Tudo</button>
+      <button class="btn btn-primary" onclick="window.location.href='index.html'"><i class="fas fa-home"></i> Site</button>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="icon"><i class="fas fa-users"></i></div>
+      <div class="value" id="total-inscritos">—</div>
+      <div class="label">Total de Inscritos</div>
+    </div>
+    <div class="stat-card">
+      <div class="icon"><i class="fas fa-check-circle"></i></div>
+      <div class="value" id="confirmados">—</div>
+      <div class="label">Confirmados</div>
+    </div>
+    <div class="stat-card">
+      <div class="icon"><i class="fas fa-clock"></i></div>
+      <div class="value" id="pendentes">—</div>
+      <div class="label">Aguardando</div>
+    </div>
+    <div class="stat-card">
+      <div class="icon"><i class="fas fa-money-bill-wave"></i></div>
+      <div class="value" id="total-arrecadado">—</div>
+      <div class="label">Arrecadado</div>
+    </div>
+  </div>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th><th>Data</th><th>Nome</th><th>Email</th>
+          <th>Telefone</th><th>Valor</th><th>Status</th>
+          <th>Comprovante</th><th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tabela-inscricoes">
+        <tr><td colspan="9" class="loading"><i class="fas fa-spinner"></i><br>A carregar...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal comprovante -->
+<div class="modal-overlay" id="modal-comprovante">
+  <div class="modal">
+    <button class="modal-close" onclick="fecharModal()">&times;</button>
+    <h3 style="margin-bottom:1rem;"><i class="fas fa-receipt"></i> Comprovante</h3>
+    <p><strong>Inscrito:</strong> <span id="modal-nome"></span></p>
+    <p><strong>Data:</strong> <span id="modal-data"></span></p>
+    <p><strong>Valor:</strong> <span id="modal-valor"></span></p>
+    <div id="modal-imagem"></div>
+  </div>
+</div>
+
+<script>
+  const API_URL = '/api'; // Muda para o URL do teu servidor em produção
+
+  // ── Carregar tudo ──────────────────────────────────────────
+  async function carregarDados() {
+    await Promise.all([carregarStats(), carregarTabela()]);
+  }
+
+  async function carregarStats() {
+    try {
+      const resp = await fetch(`${API_URL}/inscricoes/stats`);
+      const { data } = await resp.json();
+      document.getElementById('total-inscritos').textContent = data.total;
+      document.getElementById('confirmados').textContent = data.confirmados;
+      document.getElementById('pendentes').textContent = data.pendentes;
+      document.getElementById('total-arrecadado').textContent =
+        parseInt(data.arrecadado).toLocaleString() + ' KZ';
+    } catch (err) {
+      console.error('Erro ao carregar stats:', err);
+    }
+  }
+
+  async function carregarTabela() {
+    const tbody = document.getElementById('tabela-inscricoes');
+    tbody.innerHTML = '<tr><td colspan="9" class="loading"><i class="fas fa-spinner"></i></td></tr>';
+    try {
+      const resp = await fetch(`${API_URL}/inscricoes`);
+      const { data } = await resp.json();
+
+      if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:rgba(255,255,255,0.4);">Nenhuma inscrição registada</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = data.map(i => `
+        <tr>
+          <td>${i.id}</td>
+          <td>${new Date(i.created_at).toLocaleString('pt-PT')}</td>
+          <td>${i.nome}</td>
+          <td>${i.email}</td>
+          <td>${i.telefone}</td>
+          <td>${parseInt(i.valor).toLocaleString()} KZ</td>
+          <td>
+            <span class="status status-${i.status === 'confirmado' ? 'confirmed' : 'pending'}">
+              ${i.status === 'confirmado' ? 'Confirmado' : 'Aguardando'}
+            </span>
+          </td>
+          <td>
+            ${i.comprovante
+              ? `<button class="btn btn-secondary btn-sm" onclick="verComprovante(${i.id}, '${i.nome}', '${i.created_at}', ${i.valor}, '${i.comprovante}')"><i class="fas fa-eye"></i> Ver</button>`
+              : '<span style="color:rgba(255,255,255,0.3)">—</span>'}
+          </td>
+          <td style="display:flex;gap:0.3rem;flex-wrap:wrap;">
+            ${i.status !== 'confirmado'
+              ? `<button class="btn btn-primary btn-sm" onclick="confirmar(${i.id})"><i class="fas fa-check"></i></button>`
+              : ''}
+            <button class="btn btn-danger btn-sm" onclick="excluir(${i.id})"><i class="fas fa-trash"></i></button>
+          </td>
+        </tr>
+      `).join('');
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#ff6b7a;">Erro ao ligar ao servidor. Verifica se o backend está a correr.</td></tr>`;
+    }
+  }
+
+  // ── Confirmar ──────────────────────────────────────────────
+  async function confirmar(id) {
+    try {
+      const resp = await fetch(`${API_URL}/inscricoes/${id}/confirmar`, { method: 'PATCH' });
+      const data = await resp.json();
+      if (data.success) carregarDados();
+      else alert('Erro: ' + data.error);
+    } catch (err) {
+      alert('Erro de ligação.');
+    }
+  }
+
+  // ── Excluir ────────────────────────────────────────────────
+  async function excluir(id) {
+    if (!confirm('Tens a certeza que queres eliminar esta inscrição?')) return;
+    try {
+      const resp = await fetch(`${API_URL}/inscricoes/${id}`, { method: 'DELETE' });
+      const data = await resp.json();
+      if (data.success) carregarDados();
+      else alert('Erro: ' + data.error);
+    } catch (err) {
+      alert('Erro de ligação.');
+    }
+  }
+
+  // ── Limpar tudo ────────────────────────────────────────────
+  async function limparTudo() {
+    if (!confirm('⚠️ ATENÇÃO: Isso irá apagar TODAS as inscrições. Esta ação não pode ser desfeita. Confirmar?')) return;
+    try {
+      const resp = await fetch(`${API_URL}/inscricoes`, { method: 'DELETE' });
+      const data = await resp.json();
+      if (data.success) carregarDados();
+      else alert('Erro: ' + data.error);
+    } catch (err) {
+      alert('Erro de ligação.');
+    }
+  }
+
+  // ── Ver comprovante ────────────────────────────────────────
+  function verComprovante(id, nome, data, valor, url) {
+    document.getElementById('modal-nome').textContent = nome;
+    document.getElementById('modal-data').textContent = new Date(data).toLocaleString('pt-PT');
+    document.getElementById('modal-valor').textContent = parseInt(valor).toLocaleString() + ' KZ';
+    const isPdf = url.toLowerCase().endsWith('.pdf');
+    document.getElementById('modal-imagem').innerHTML = isPdf
+      ? `<a href="${url}" target="_blank" class="btn btn-primary" style="margin-top:1rem;"><i class="fas fa-file-pdf"></i> Abrir PDF</a>`
+      : `<img src="${url}" class="comprovante-img" alt="Comprovante">`;
+    document.getElementById('modal-comprovante').classList.add('active');
+  }
+
+  function fecharModal() {
+    document.getElementById('modal-comprovante').classList.remove('active');
+  }
+
+  document.getElementById('modal-comprovante').addEventListener('click', function(e) {
+    if (e.target === this) fecharModal();
+  });
+
+  // ── Exportar CSV ───────────────────────────────────────────
+  async function exportarCSV() {
+    try {
+      const resp = await fetch(`${API_URL}/inscricoes`);
+      const { data } = await resp.json();
+      const rows = [['ID','Data','Nome','Email','Telefone','Valor','Status','Comprovante']];
+      data.forEach(i => rows.push([
+        i.id,
+        new Date(i.created_at).toLocaleString('pt-PT'),
+        i.nome, i.email, i.telefone,
+        parseInt(i.valor).toLocaleString() + ' KZ',
+        i.status === 'confirmado' ? 'Confirmado' : 'Pendente',
+        i.comprovante ? 'Sim' : 'Não'
+      ]));
+      const csv = rows.map(r => r.join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `inscricoes_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+    } catch (err) {
+      alert('Erro ao exportar.');
+    }
+  }
+
+  // ── Iniciar ────────────────────────────────────────────────
+  carregarDados();
+</script>
+</body>
+</html>
