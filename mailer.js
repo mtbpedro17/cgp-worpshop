@@ -1,19 +1,8 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const PDFDocument = require('pdfkit');
 const path = require('path');
 
 const ASSETS = path.join(__dirname, 'public', 'assets');
-
-// ─── Transportador de Email ────────────────────────────────────
-function criarTransporter() {
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS
-    }
-  });
-}
 
 // ─── Gerar PDF do Comprovativo ─────────────────────────────────
 function gerarComprovativoPDF(inscricao) {
@@ -97,9 +86,7 @@ function gerarComprovativoPDF(inscricao) {
     const cardW = W - 120;
     const cardH = 220;
 
-    doc.roundedRect(cardX, cardY, cardW, cardH, 8)
-       .fill('#1b1f1d');
-
+    doc.roundedRect(cardX, cardY, cardW, cardH, 8).fill('#1b1f1d');
     doc.rect(cardX, cardY, cardW, 36).fill('#0c3b2a');
     doc.roundedRect(cardX, cardY, cardW, 36, 8).fill('#0c3b2a');
 
@@ -112,13 +99,12 @@ function gerarComprovativoPDF(inscricao) {
          characterSpacing: 3
        });
 
-    // Linhas de dados
     const dados = [
-      { label: 'Nome',         valor: inscricao.nome },
-      { label: 'Email',        valor: inscricao.email },
-      { label: 'Telefone',     valor: inscricao.telefone },
-      { label: 'Valor pago',   valor: parseInt(inscricao.valor).toLocaleString('pt-PT') + ' KZ' },
-      { label: 'Data',         valor: new Date(inscricao.created_at).toLocaleString('pt-PT') },
+      { label: 'Nome',       valor: inscricao.nome },
+      { label: 'Email',      valor: inscricao.email },
+      { label: 'Telefone',   valor: inscricao.telefone },
+      { label: 'Valor pago', valor: parseInt(inscricao.valor).toLocaleString('pt-PT') + ' KZ' },
+      { label: 'Data',       valor: new Date(inscricao.created_at).toLocaleString('pt-PT') },
     ];
 
     let yLinha = cardY + 52;
@@ -130,17 +116,10 @@ function gerarComprovativoPDF(inscricao) {
            .lineTo(cardX + cardW - 20, yLinha - 8)
            .stroke();
       }
-
-      doc.fillColor('rgba(255,255,255,0.45)')
-         .font('Helvetica')
-         .fontSize(9)
+      doc.fillColor('rgba(255,255,255,0.45)').font('Helvetica').fontSize(9)
          .text(d.label.toUpperCase(), cardX + 20, yLinha, { characterSpacing: 1 });
-
-      doc.fillColor('#ffffff')
-         .font('Helvetica-Bold')
-         .fontSize(11)
+      doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(11)
          .text(d.valor, cardX + 20, yLinha + 13);
-
       yLinha += 38;
     });
 
@@ -150,28 +129,21 @@ function gerarComprovativoPDF(inscricao) {
     doc.rect(cardX, evCardY, cardW, 36).fill('#0c3b2a');
     doc.roundedRect(cardX, evCardY, cardW, 36, 8).fill('#0c3b2a');
 
-    doc.fillColor('#b5ff4d')
-       .font('Helvetica-Bold')
-       .fontSize(9)
+    doc.fillColor('#b5ff4d').font('Helvetica-Bold').fontSize(9)
        .text('DETALHES DO EVENTO', cardX, evCardY + 13, {
          width: cardW, align: 'center', characterSpacing: 3
        });
 
-    doc.fillColor('#ffffff')
-       .font('Helvetica-Bold')
-       .fontSize(13)
+    doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(13)
        .text('Oficina de Gestão de Projectos 2026', cardX + 20, evCardY + 46);
 
-    doc.fillColor('rgba(255,255,255,0.5)')
-       .font('Helvetica')
-       .fontSize(10)
+    doc.fillColor('rgba(255,255,255,0.5)').font('Helvetica').fontSize(10)
        .text('28 de Março de 2026  ·  Luanda, Angola', cardX + 20, evCardY + 66);
 
     // ── Rodapé ───────────────────────────────────────────────
     doc.rect(0, H - 80, W, 80).fill('#0c3b2a');
     doc.rect(0, H - 82, W, 3).fill('#b5ff4d');
 
-    // Logos pequenas no rodapé
     const rLogoH = 16;
     const rLogoObW = Math.round(rLogoH * (1771 / 400));
     const rLogoMrW = Math.round(rLogoH * (753 / 174));
@@ -184,20 +156,13 @@ function gerarComprovativoPDF(inscricao) {
       doc.image(path.join(ASSETS, 'MR.6.png'), rLogoX + rLogoObW + 10, H - 68, { width: rLogoMrW, height: rLogoH });
     } catch (e) {}
 
-    doc.fillColor('rgba(255,255,255,0.4)')
-       .font('Helvetica')
-       .fontSize(8)
-       .text(
-         'Este documento é o comprovativo oficial da tua inscrição na Oficina de Gestão de Projectos.',
-         40, H - 44, { align: 'center', width: W - 80 }
-       );
+    doc.fillColor('rgba(255,255,255,0.4)').font('Helvetica').fontSize(8)
+       .text('Este documento é o comprovativo oficial da tua inscrição na Oficina de Gestão de Projectos.',
+         40, H - 44, { align: 'center', width: W - 80 });
 
-    doc.fillColor('rgba(255,255,255,0.25)')
-       .fontSize(8)
-       .text(
-         `Emitido em ${new Date().toLocaleString('pt-PT')}  ·  Comunidade CGP © 2026`,
-         40, H - 28, { align: 'center', width: W - 80 }
-       );
+    doc.fillColor('rgba(255,255,255,0.25)').fontSize(8)
+       .text(`Emitido em ${new Date().toLocaleString('pt-PT')}  ·  Comunidade CGP © 2026`,
+         40, H - 28, { align: 'center', width: W - 80 });
 
     doc.end();
   });
@@ -205,21 +170,20 @@ function gerarComprovativoPDF(inscricao) {
 
 // ─── Enviar Email com Comprovativo ─────────────────────────────
 async function enviarComprovanteEmail(inscricao) {
-  const transporter = criarTransporter();
+  const resend = new Resend(process.env.RESEND_API_KEY);
   const pdfBuffer = await gerarComprovativoPDF(inscricao);
   const numComp = String(inscricao.id).padStart(6, '0');
 
-  await transporter.sendMail({
-    from: `"Oficina CGP" <${process.env.EMAIL_USER}>`,
+  await resend.emails.send({
+    from: 'Oficina CGP <onboarding@resend.dev>',
     to: inscricao.email,
-    subject: `✅ Inscrição Confirmada - Oficina de Projectos CGP`,
+    subject: '✅ Inscrição Confirmada - Oficina de Projectos CGP',
     html: `
       <!DOCTYPE html>
       <html>
       <body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
         <div style="max-width:560px;margin:30px auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
 
-          <!-- Header -->
           <div style="background:#0c3b2a;padding:32px 40px;text-align:center;">
             <p style="color:#b5ff4d;font-size:11px;letter-spacing:4px;margin:0 0 8px;">COMUNIDADE CGP</p>
             <h1 style="color:#ffffff;font-size:22px;margin:0;line-height:1.3;">
@@ -227,7 +191,6 @@ async function enviarComprovanteEmail(inscricao) {
             </h1>
           </div>
 
-          <!-- Confirmação -->
           <div style="padding:32px 40px;text-align:center;border-bottom:1px solid #eee;">
             <div style="width:60px;height:60px;background:#0c3b2a;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;">
               <span style="color:#b5ff4d;font-size:28px;line-height:60px;">✓</span>
@@ -238,7 +201,6 @@ async function enviarComprovanteEmail(inscricao) {
             </p>
           </div>
 
-          <!-- Dados -->
           <div style="padding:28px 40px;">
             <table style="width:100%;border-collapse:collapse;">
               <tr style="border-bottom:1px solid #f0f0f0;">
@@ -260,14 +222,12 @@ async function enviarComprovanteEmail(inscricao) {
             </table>
           </div>
 
-          <!-- PDF note -->
           <div style="margin:0 40px 28px;background:#f0faf4;border-left:4px solid #b5ff4d;border-radius:4px;padding:14px 16px;">
             <p style="margin:0;color:#0c3b2a;font-size:13px;">
               📎 O teu <strong>comprovativo oficial em PDF</strong> está em anexo. Guarda-o para apresentar no evento.
             </p>
           </div>
 
-          <!-- Footer -->
           <div style="background:#0c3b2a;padding:20px 40px;text-align:center;">
             <p style="color:rgba(255,255,255,0.5);font-size:11px;margin:0;">
               Comunidade CGP © 2026 · Oficina de Gestão de Projectos
@@ -280,8 +240,7 @@ async function enviarComprovanteEmail(inscricao) {
     attachments: [
       {
         filename: `comprovativo_cgp_${numComp}.pdf`,
-        content: pdfBuffer,
-        contentType: 'application/pdf'
+        content: pdfBuffer.toString('base64'),
       }
     ]
   });
