@@ -1,8 +1,21 @@
-const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
 const PDFDocument = require('pdfkit');
 const path = require('path');
 
 const ASSETS = path.join(__dirname, 'public', 'assets');
+
+// ─── Transportador de Email (Brevo SMTP) ──────────────────────
+function criarTransporter() {
+  return nodemailer.createTransport({
+    host: 'smtp-relay.brevo.com',
+    port: 587,
+    secure: false,
+    auth: {
+      user: process.env.BREVO_SMTP_USER,
+      pass: process.env.BREVO_SMTP_PASS
+    }
+  });
+}
 
 // ─── Gerar PDF do Comprovativo ─────────────────────────────────
 function gerarComprovativoPDF(inscricao) {
@@ -17,16 +30,10 @@ function gerarComprovativoPDF(inscricao) {
     const W = 595.28;
     const H = 841.89;
 
-    // ── Fundo principal ──────────────────────────────────────
     doc.rect(0, 0, W, H).fill('#0a0c0b');
-
-    // ── Cabeçalho verde escuro ───────────────────────────────
     doc.rect(0, 0, W, 200).fill('#0c3b2a');
-
-    // ── Faixa decorativa verde neon ──────────────────────────
     doc.rect(0, 198, W, 4).fill('#b5ff4d');
 
-    // ── Logos Outbler × MasterRefiner no cabeçalho ──────────
     const logoH = 26;
     const logoObW = Math.round(logoH * (1771 / 400));
     const logoMrW = Math.round(logoH * (753 / 174));
@@ -40,47 +47,30 @@ function gerarComprovativoPDF(inscricao) {
       doc.image(path.join(ASSETS, 'MR.6.png'), logoX + logoObW + 14, logoY, { width: logoMrW, height: logoH });
     } catch (e) { console.warn('Logos não encontradas:', e.message); }
 
-    // ── Título principal ─────────────────────────────────────
-    doc.fillColor('#b5ff4d')
-       .font('Helvetica-Bold')
-       .fontSize(11)
+    doc.fillColor('#b5ff4d').font('Helvetica-Bold').fontSize(11)
        .text('COMUNIDADE CGP', 0, 54, { align: 'center', characterSpacing: 4 });
 
-    doc.fillColor('#ffffff')
-       .font('Helvetica-Bold')
-       .fontSize(26)
+    doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(26)
        .text('OFICINA DE GESTÃO', 0, 74, { align: 'center' });
 
-    doc.fillColor('#ffffff')
-       .font('Helvetica-Bold')
-       .fontSize(26)
+    doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(26)
        .text('DE PROJECTOS', 0, 104, { align: 'center' });
 
-    doc.fillColor('rgba(255,255,255,0.5)')
-       .font('Helvetica')
-       .fontSize(10)
+    doc.fillColor('rgba(255,255,255,0.5)').font('Helvetica').fontSize(10)
        .text('COMPROVATIVO DE INSCRIÇÃO', 0, 144, { align: 'center', characterSpacing: 3 });
 
-    // ── Número do comprovativo ───────────────────────────────
     const numComp = String(inscricao.id).padStart(6, '0');
-    doc.fillColor('#b5ff4d')
-       .font('Helvetica-Bold')
-       .fontSize(10)
+    doc.fillColor('#b5ff4d').font('Helvetica-Bold').fontSize(10)
        .text(`Nº ${numComp}`, 0, 166, { align: 'center', characterSpacing: 2 });
 
-    // ── Ícone de confirmação ─────────────────────────────────
     const cx = W / 2;
     doc.circle(cx, 236, 32).fill('#0c3b2a').stroke();
     doc.strokeColor('#b5ff4d').lineWidth(2).circle(cx, 236, 32).stroke();
     doc.fillColor('#b5ff4d').font('Helvetica-Bold').fontSize(28).text('✓', cx - 10, 221);
 
-    // ── Texto de confirmação ─────────────────────────────────
-    doc.fillColor('#b5ff4d')
-       .font('Helvetica-Bold')
-       .fontSize(14)
+    doc.fillColor('#b5ff4d').font('Helvetica-Bold').fontSize(14)
        .text('PAGAMENTO CONFIRMADO', 0, 284, { align: 'center', characterSpacing: 2 });
 
-    // ── Card de dados do inscrito ────────────────────────────
     const cardX = 60;
     const cardY = 308;
     const cardW = W - 120;
@@ -90,14 +80,8 @@ function gerarComprovativoPDF(inscricao) {
     doc.rect(cardX, cardY, cardW, 36).fill('#0c3b2a');
     doc.roundedRect(cardX, cardY, cardW, 36, 8).fill('#0c3b2a');
 
-    doc.fillColor('#b5ff4d')
-       .font('Helvetica-Bold')
-       .fontSize(9)
-       .text('DADOS DO INSCRITO', cardX, cardY + 13, {
-         width: cardW,
-         align: 'center',
-         characterSpacing: 3
-       });
+    doc.fillColor('#b5ff4d').font('Helvetica-Bold').fontSize(9)
+       .text('DADOS DO INSCRITO', cardX, cardY + 13, { width: cardW, align: 'center', characterSpacing: 3 });
 
     const dados = [
       { label: 'Nome',       valor: inscricao.nome },
@@ -110,11 +94,8 @@ function gerarComprovativoPDF(inscricao) {
     let yLinha = cardY + 52;
     dados.forEach((d, i) => {
       if (i > 0) {
-        doc.strokeColor('rgba(255,255,255,0.06)')
-           .lineWidth(0.5)
-           .moveTo(cardX + 20, yLinha - 8)
-           .lineTo(cardX + cardW - 20, yLinha - 8)
-           .stroke();
+        doc.strokeColor('rgba(255,255,255,0.06)').lineWidth(0.5)
+           .moveTo(cardX + 20, yLinha - 8).lineTo(cardX + cardW - 20, yLinha - 8).stroke();
       }
       doc.fillColor('rgba(255,255,255,0.45)').font('Helvetica').fontSize(9)
          .text(d.label.toUpperCase(), cardX + 20, yLinha, { characterSpacing: 1 });
@@ -123,16 +104,13 @@ function gerarComprovativoPDF(inscricao) {
       yLinha += 38;
     });
 
-    // ── Card do evento ───────────────────────────────────────
     const evCardY = cardY + cardH + 20;
     doc.roundedRect(cardX, evCardY, cardW, 90, 8).fill('#1b1f1d');
     doc.rect(cardX, evCardY, cardW, 36).fill('#0c3b2a');
     doc.roundedRect(cardX, evCardY, cardW, 36, 8).fill('#0c3b2a');
 
     doc.fillColor('#b5ff4d').font('Helvetica-Bold').fontSize(9)
-       .text('DETALHES DO EVENTO', cardX, evCardY + 13, {
-         width: cardW, align: 'center', characterSpacing: 3
-       });
+       .text('DETALHES DO EVENTO', cardX, evCardY + 13, { width: cardW, align: 'center', characterSpacing: 3 });
 
     doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(13)
        .text('Oficina de Gestão de Projectos 2026', cardX + 20, evCardY + 46);
@@ -140,7 +118,6 @@ function gerarComprovativoPDF(inscricao) {
     doc.fillColor('rgba(255,255,255,0.5)').font('Helvetica').fontSize(10)
        .text('28 de Março de 2026  ·  Luanda, Angola', cardX + 20, evCardY + 66);
 
-    // ── Rodapé ───────────────────────────────────────────────
     doc.rect(0, H - 80, W, 80).fill('#0c3b2a');
     doc.rect(0, H - 82, W, 3).fill('#b5ff4d');
 
@@ -170,12 +147,12 @@ function gerarComprovativoPDF(inscricao) {
 
 // ─── Enviar Email com Comprovativo ─────────────────────────────
 async function enviarComprovanteEmail(inscricao) {
-  const resend = new Resend(process.env.RESEND_API_KEY);
+  const transporter = criarTransporter();
   const pdfBuffer = await gerarComprovativoPDF(inscricao);
   const numComp = String(inscricao.id).padStart(6, '0');
 
-  await resend.emails.send({
-    from: 'Oficina CGP <onboarding@resend.dev>',
+  await transporter.sendMail({
+    from: `"Oficina CGP" <${process.env.BREVO_SMTP_USER}>`,
     to: inscricao.email,
     subject: '✅ Inscrição Confirmada - Oficina de Projectos CGP',
     html: `
@@ -240,7 +217,8 @@ async function enviarComprovanteEmail(inscricao) {
     attachments: [
       {
         filename: `comprovativo_cgp_${numComp}.pdf`,
-        content: pdfBuffer.toString('base64'),
+        content: pdfBuffer,
+        contentType: 'application/pdf'
       }
     ]
   });
