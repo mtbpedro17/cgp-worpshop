@@ -174,6 +174,23 @@ app.delete('/api/inscricoes', async (req, res) => {
   }
 });
 
+// ─── ROTA DE TESTE DE EMAIL (apagar depois do deploy) ──────────
+app.get('/teste-email', async (req, res) => {
+  try {
+    await enviarComprovanteEmail({
+      id: 1,
+      nome: 'Teste',
+      email: process.env.EMAIL_USER,
+      telefone: '900000000',
+      valor: 5000,
+      created_at: new Date()
+    });
+    res.json({ success: true, message: 'Email enviado com sucesso!' });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
 // ─── Arrancar servidor ─────────────────────────────────────────
 conectarBD().then(() => {
   app.listen(PORT, () => {
