@@ -50,7 +50,6 @@ async function conectarBD() {
     ssl: process.env.MYSQLHOST ? { rejectUnauthorized: false } : false
   });
 
-  // Criar tabela se não existir
   await db.execute(`
     CREATE TABLE IF NOT EXISTS inscricoes (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -69,19 +68,15 @@ async function conectarBD() {
 
 // ─── ROTAS DA API ──────────────────────────────────────────────
 
-// GET /api/inscricoes — listar todas
 app.get('/api/inscricoes', async (req, res) => {
   try {
-    const [rows] = await db.execute(
-      'SELECT * FROM inscricoes ORDER BY created_at DESC'
-    );
+    const [rows] = await db.execute('SELECT * FROM inscricoes ORDER BY created_at DESC');
     res.json({ success: true, data: rows });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// GET /api/inscricoes/stats — estatísticas
 app.get('/api/inscricoes/stats', async (req, res) => {
   try {
     const [[{ total }]] = await db.execute('SELECT COUNT(*) as total FROM inscricoes');
@@ -94,7 +89,6 @@ app.get('/api/inscricoes/stats', async (req, res) => {
   }
 });
 
-// POST /api/inscricoes — nova inscrição (com upload de comprovante)
 app.post('/api/inscricoes', upload.single('comprovante'), async (req, res) => {
   try {
     const { nome, email, telefone } = req.body;
@@ -102,13 +96,11 @@ app.post('/api/inscricoes', upload.single('comprovante'), async (req, res) => {
       return res.status(400).json({ success: false, error: 'Nome, email e telefone são obrigatórios' });
     }
 
-    // Validar 9 dígitos no telefone
     const apenasDigitos = telefone.replace(/\D/g, '');
     if (apenasDigitos.length < 9) {
       return res.status(400).json({ success: false, error: 'O telefone deve ter pelo menos 9 dígitos.' });
     }
 
-    // Verificar se email já existe
     const [existe] = await db.execute('SELECT id FROM inscricoes WHERE email = ?', [email]);
     if (existe.length > 0) {
       return res.status(409).json({ success: false, error: 'Este email já está inscrito. Se precisas de ajuda contacta-nos pelo WhatsApp.' });
@@ -127,7 +119,6 @@ app.post('/api/inscricoes', upload.single('comprovante'), async (req, res) => {
   }
 });
 
-// PATCH /api/inscricoes/:id/confirmar — confirmar inscrição e enviar comprovativo por email
 app.patch('/api/inscricoes/:id/confirmar', async (req, res) => {
   try {
     const [[inscricao]] = await db.execute('SELECT * FROM inscricoes WHERE id = ?', [req.params.id]);
@@ -136,7 +127,6 @@ app.patch('/api/inscricoes/:id/confirmar', async (req, res) => {
 
     await db.execute("UPDATE inscricoes SET status = 'confirmado' WHERE id = ?", [req.params.id]);
 
-    // Envia comprovativo PDF por email em background (não bloqueia a resposta)
     enviarComprovanteEmail(inscricao).catch(err =>
       console.error(`❌ Erro ao enviar email para ${inscricao.email}:`, err.message)
     );
@@ -147,10 +137,8 @@ app.patch('/api/inscricoes/:id/confirmar', async (req, res) => {
   }
 });
 
-// DELETE /api/inscricoes/:id — apagar inscrição
 app.delete('/api/inscricoes/:id', async (req, res) => {
   try {
-    // Apagar ficheiro do comprovante se existir
     const [[row]] = await db.execute('SELECT comprovante FROM inscricoes WHERE id = ?', [req.params.id]);
     if (row?.comprovante) {
       const filePath = path.join(__dirname, 'public', row.comprovante);
@@ -163,7 +151,6 @@ app.delete('/api/inscricoes/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/inscricoes — apagar todas
 app.delete('/api/inscricoes', async (req, res) => {
   try {
     await db.execute('DELETE FROM inscricoes');
@@ -174,7 +161,22 @@ app.delete('/api/inscricoes', async (req, res) => {
   }
 });
 
-
+// ─── ROTA DE TESTE DE EMAIL (apagar depois) ────────────────────
+app.get('/teste-email', async (req, res) => {
+  try {
+    await enviarComprovanteEmail({
+      id: 99,
+      nome: 'Teste Brevo',
+      email: req.query.email || 'mtbpedro17@gmail.com',
+      telefone: '900000000',
+      valor: 5000,
+      created_at: new Date()
+    });
+    res.json({ success: true, message: `Email enviado para ${req.query.email || 'mtbpedro17@gmail.com'}` });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
 
 // ─── Arrancar servidor ─────────────────────────────────────────
 conectarBD().then(() => {
