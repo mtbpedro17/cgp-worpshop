@@ -162,21 +162,7 @@ app.delete('/api/inscricoes', async (req, res) => {
 });
 
 // ─── ROTA DE TESTE DE EMAIL (apagar depois) ────────────────────
-app.get('/teste-email', async (req, res) => {
-  try {
-    await enviarComprovanteEmail({
-      id: 99,
-      nome: 'Teste Brevo',
-      email: req.query.email || 'mtbpedro17@gmail.com',
-      telefone: '900000000',
-      valor: 5000,
-      created_at: new Date()
-    });
-    res.json({ success: true, message: `Email enviado para ${req.query.email || 'mtbpedro17@gmail.com'}` });
-  } catch (err) {
-    res.json({ success: false, error: err.message });
-  }
-});
+
 
 // ─── Arrancar servidor ─────────────────────────────────────────
 conectarBD().then(() => {
